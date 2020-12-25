@@ -9,7 +9,7 @@
 #include <Indicators\Oscilators.mqh>
 class TrendLine  // For use this Class u need to set [Set_Toe_Center()] function and then use [Create()],[Set_ZigZag_Params()] functions
   {
-private:
+protected:
    CChartObjectTrend my_trend ;
    int               m_toe_bar;
    int               m_center_bar;
@@ -33,12 +33,12 @@ public:
    void              Set_ZigZag_Params(int depth, int deviation, int backsteps)   { z_depth = depth; z_dev = deviation;  z_stp = backsteps;  }
    void              Set_Toe_Center(int center, int toe)   { z_toe = toe; z_center = center;   } // This function Sets which extermums u want to select to use for trendline
    //                Get Params
-   int               GetToeBar()                            { return m_toe_bar;                 }
-   int               GetCenterBar()                         { return m_center_bar;              }
-   double            GetToePrice()                          { return Value(m_toe_bar);          }
-   double            GetCenterPrice()                       { return Value(m_center_bar);       }
-   double            Value();                               //return the current value of trendline
-   double            Value(int bar);
+   int               GetToeBar()                            { return m_toe_bar;                 } // return left corner bar number
+   int               GetCenterBar()                         { return m_center_bar;              } // return right corner bar number
+   double            GetToePrice()                          { return Value(m_toe_bar);          } // return left corner bar price 
+   double            GetCenterPrice()                       { return Value(m_center_bar);       } // return right corner bar price 
+   double            Value();       //---------------------------------------------------------------return the current value of trendline
+   double            Value(int bar);//---------------------------------------------------------------return the  value of trendline in specific place
    
    void              OptimizedPoints();
    
@@ -63,7 +63,7 @@ TrendLine::~TrendLine(void)
   {
    ObjectDelete(0, trnd_name);
   }
-//============================================================================================================================
+//========================================================================
 double TrendLine::Value(void)
   {
    double result;
@@ -223,12 +223,12 @@ void TrendLine::Extend(void) //This func Extend trendline if Price got lower or 
      }
   }
 //========================================================================
-bool TrendLine::BreakOut(double priceLevel, int index) // it returns the pricelevel Breakout
+bool TrendLine::BreakOut(double priceLevel, int index) // it returns if the pricelevel Breakout in specific bar
   {
    double closeBar1         = iClose(_Symbol, 0, index);
    double openBar1          = iOpen(_Symbol, 0, index);
    double closeBar2         = iClose(_Symbol, 0, index + 1);
-   double body   = MathAbs(closeBar1 - openBar1) / 2;
+   double body              = MathAbs(closeBar1 - openBar1) / 2;
    if(is_ascending)
      {
       double state   = (closeBar1 > openBar1) ? (body + openBar1) : (0);
@@ -271,8 +271,22 @@ double TrendLine::Value(int bar)  // This func Return the Trendline value on spe
    result = y_touch - ((xdiff2 / diff_x) * diff_y);
    return result;
   }
-  
-  
+
+//===================================================================================================================================
+//===================================================================================================================================
+//===================================================================================================================================
+//===================================      Class All_Trendlines       ===============================================================
+//===================================================================================================================================
+//===================================================================================================================================
+//===================================================================================================================================
+ class trends : public TrendLine
+   {
+ protected:
+      
+ public:
+                      trends(void);
+                     ~trends(void);
+   };
   
   
   
