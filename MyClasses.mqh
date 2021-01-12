@@ -7,7 +7,7 @@
 #include <ChartObjects\ChartObjectsLines.mqh>
 #include <MyFiles\Zigzag.mqh>
 #include <Indicators\Oscilators.mqh>
-class TrendLine  // For use this Class u need to set [Set_Toe_Center()] function and then use [Create()],[Set_ZigZag_Params()] functions
+class TrendLine // For use this Class u need to set [Set_Toe_Center()] function and then use [Create()],[Set_ZigZag_Params()] functions
   {
 protected:
    CChartObjectTrend my_trend ;
@@ -16,7 +16,7 @@ protected:
    datetime          date_toe;
    datetime          date_center;
    double            m_value;
-   bool              is_ascending;
+   bool              is_ascending; //if its true it means that trend line is
    int               z_depth;
    int               z_dev;
    int               z_stp;
@@ -35,15 +35,18 @@ public:
    //                Get Params
    int               GetToeBar()                            { return m_toe_bar;                 } // return left corner bar number
    int               GetCenterBar()                         { return m_center_bar;              } // return right corner bar number
-   double            GetToePrice()                          { return Value(m_toe_bar);          } // return left corner bar price 
-   double            GetCenterPrice()                       { return Value(m_center_bar);       } // return right corner bar price 
+   double            GetToePrice()                          { return Value(m_toe_bar);          } // return left corner bar price
+   double            GetCenterPrice()                       { return Value(m_center_bar);       } // return right corner bar price
+   bool              GetDirection()                         { return is_ascending;              }
+   string            GetName()                              { return trnd_name;                 }
    double            Value();       //---------------------------------------------------------------return the current value of trendline
    double            Value(int bar);//---------------------------------------------------------------return the  value of trendline in specific place
-   
-   void              OptimizedPoints();
-   
+   void              Init(int center, int toe, int depth = 12, int deviation = 5, int backsteps = 3); //we can use this instead of Set_zigZag and Set_Toe_Center
+   bool              is_Valid();
+
+
    bool              Create(int startBar, int secondBar); //First we should init Class with 2 point of Trend Line
-   void              Create();                            // Init trendline based on toe and center 
+   void              Create();                            // Init trendline based on toe and center
    bool              Create(datetime startDate, datetime secondDate); //First we should init Class with 2 point of Trend Line
 
    void              Extend();
@@ -72,6 +75,7 @@ double TrendLine::Value(void)
    double y_touch = (!is_ascending) ? (iLow(_Symbol, 0, m_center_bar)) : (iHigh(_Symbol, 0, m_center_bar));
    double diff_y = y_source - y_touch;
    result = y_touch - ((m_center_bar / diff_x) * diff_y);
+//shibkhat = diff_y / diff_x;
    return result;
   }
 //========================================================================
@@ -153,6 +157,7 @@ void TrendLine::Draw(void)
 void TrendLine::Create(void)
   {
    m_zigzag.Create(_Symbol, z_depth, z_dev, z_stp);
+
    trnd_name            = IntegerToString(MathRand());
    date_toe             = m_zigzag.ExtremumTime(z_toe)     ;
    date_center          = m_zigzag.ExtremumTime(z_center)  ;
@@ -187,40 +192,41 @@ void TrendLine::Extend(void) //This func Extend trendline if Price got lower or 
          m_center_bar = i;
          date_center = iTime(_Symbol, 0, i);
          ObjectDelete(0, trnd_name);
-         Draw();
-         ChartRedraw();
+         //Draw();
+         //ChartRedraw();
         }
       if(!is_ascending && iLow(_Symbol, 0, i) < Value(i))
         {
          m_center_bar = i;
          date_center = iTime(_Symbol, 0, i);
          ObjectDelete(0, trnd_name);
-         Draw();
-         ChartRedraw();
+         //Draw();
+         //ChartRedraw();
         }
      }
 
    for(int i = toe; i > center + 1; i--)
      {
-      
+
       //double body = 0.15 * (iHigh(_Symbol, 0, i) -  iLow(_Symbol, 0, i));
       if(is_ascending && iHigh(_Symbol, 0, i) - atr > Value(i))
         {
          m_toe_bar = i;
          date_toe = iTime(_Symbol, 0, i);
          ObjectDelete(0, trnd_name);
-         Draw();
-         ChartRedraw();
+         //Draw();
+         //ChartRedraw();
         }
       if(!is_ascending && iLow(_Symbol, 0, i) + atr < Value(i))
         {
          m_toe_bar = i;
          date_toe = iTime(_Symbol, 0, i);
          ObjectDelete(0, trnd_name);
-         Draw();
-         ChartRedraw();
+         //Draw();
+         //ChartRedraw();
         }
      }
+
   }
 //========================================================================
 bool TrendLine::BreakOut(double priceLevel, int index) // it returns if the pricelevel Breakout in specific bar
@@ -271,6 +277,47 @@ double TrendLine::Value(int bar)  // This func Return the Trendline value on spe
    result = y_touch - ((xdiff2 / diff_x) * diff_y);
    return result;
   }
+//========================================================================
+void TrendLine::Init(int center, int toe, int depth = 12, int deviation = 5, int backsteps = 3)
+  {
+   Set_Toe_Center(center, toe);
+   Set_ZigZag_Params(depth, deviation, backsteps);
+   Create();
+   Extend();
+//Value();
+//Draw();
+  }
+//========================================================================
+bool TrendLine::is_Valid(void)
+  {
+   m_atr.Refresh();
+   bool flag ;
+   if(iClose(_Symbol, 0, m_toe_bar) < Value(m_toe_bar)) //Agar khate ravand balaye gheymat boood
+      flag = true;
+   else
+      flag = false;
+   for(int i = m_toe_bar; i > 3; i--)
+     {
+      double atr = m_atr.Main(i);
+      double price = iClose(_Symbol, 0, i);
+      if(flag &&  price > Value(i))
+        {
+         return false;
+        }
+      if(!flag && price < Value(i))
+        {
+         return false;
+        }
+     }
+   double ask = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK), _Digits);
+   double open = NormalizeDouble(iOpen(_Symbol, 0, 0), _Digits);
+   double atr2 = m_atr.Main(0) * 4;
+   double distance1 = MathAbs(ask - Value());
+   double distance2 = MathAbs(open - Value());
+   if(distance1 > atr2 &&  distance2 > atr2)
+      return false;
+   return true;
+  }
 
 //===================================================================================================================================
 //===================================================================================================================================
@@ -279,18 +326,93 @@ double TrendLine::Value(int bar)  // This func Return the Trendline value on spe
 //===================================================================================================================================
 //===================================================================================================================================
 //===================================================================================================================================
- class trends : public TrendLine
-   {
- protected:
-      
- public:
-                      trends(void);
-                     ~trends(void);
-   };
-  
-  
-  
-  
+class Trends
+  {
+protected:
+   TrendLine         trnds[];
+   TrendLine         main_trends[];
+   int               main_counter;
+   int               trnd_counter;
+   int               total ;
+public:
+   bool              AddTrend();
+   void              CheckValidation();
+                     Trends(void);
+                    ~Trends(void);
+  };
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+Trends::Trends(void)
+  {}
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+Trends::~Trends(void)
+  {}
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+bool  Trends::AddTrend(void)
+  {
+   total = 20;
+   trnd_counter = 0;
+   for(int i = 1; i < total - 1; i += 2)
+      for(int j = i + 2; j < total; j += 2)
+        {
+
+         if(ArrayResize(trnds, trnd_counter + 1) == -1)
+           {
+            Print(__FUNCTION__, " Array cant be resize!");
+            return false;
+           }
+         trnds[trnd_counter].Init(i, j);
+         if(trnds[trnd_counter].is_Valid())
+            trnd_counter++;
+        }
+   for(int i = 2; i < total - 1; i += 2)
+      for(int j = i + 2; j < total; j += 2)
+        {
+
+         if(ArrayResize(trnds, trnd_counter + 1) == -1)
+           {
+            Print(__FUNCTION__, " Array cant be resize!");
+            return false;
+           }
+         trnds[trnd_counter].Init(i, j);
+         if(trnds[trnd_counter].is_Valid())
+            trnd_counter++;
+        }
+   return true;
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void Trends::CheckValidation(void)
+  {
+   main_counter = 0;
+   int xsize = ArraySize(trnds);
+   for(int i = 0; i < xsize - 1; i++)
+      for(int j = i + 1; j < xsize; j++)
+        {
+         if(trnds[i].Value() != trnds[j].Value())
+           {
+            if(ArrayResize(main_trends, main_counter + 1) == -1)
+               Print(__FUNCTION__, " Array cant be resize!");
+            main_trends[main_counter] = trnds[i];
+            main_counter++;
+           }
+
+        }
+   int ysize = ArraySize(main_trends);
+   for(int i = 0; i < ysize; i++)
+     {
+      Print(main_trends[i].GetName());
+      main_trends[i].Draw();
+     }
+  }
+
+
 //===================================================================================================================================
 //===================================================================================================================================
 //===================================================================================================================================
@@ -326,17 +448,17 @@ void Pattern::initTrend(int trnd1_center = 0, int trnd1_toe = 2, int trnd2_cente
    trnd1.Draw();
    trnd2.Draw();
    Print(PatternValue());
-   //double Ask           = NormalizeDouble(SymbolInfoDouble(_Symbol,SYMBOL_ASK),_Digits);
-   //m_atr.Refresh();
-   //double  atr          = m_atr.Main(1) ;
-   //int counter = 5;
-   //while(trnd1.Value() >= Ask + (3 * atr) || counter == 0)
-   //   {
-   //      trnd1.Set_Toe_Center(trnd1_center, trnd1_toe);
-   //      trnd1.Create();
-   //      trnd1.Draw();
-   //      counter--;
-   //   }
+//double Ask           = NormalizeDouble(SymbolInfoDouble(_Symbol,SYMBOL_ASK),_Digits);
+//m_atr.Refresh();
+//double  atr          = m_atr.Main(1) ;
+//int counter = 5;
+//while(trnd1.Value() >= Ask + (3 * atr) || counter == 0)
+//   {
+//      trnd1.Set_Toe_Center(trnd1_center, trnd1_toe);
+//      trnd1.Create();
+//      trnd1.Draw();
+//      counter--;
+//   }
   }
 //========================================================================
 //==== This Function return type of our patterns based on 2 trends =======
@@ -364,7 +486,7 @@ string Pattern::PatternValue(void)
       return "Falling Wedge";
    if((a > c + atr && a - atr > c) && (b < d - atr && b + atr < d))
       return "Opening Triangle";
-   if((a > c + atr && a - atr > c) && (b+atr >=d  &&  b - atr <=d))
+   if((a > c + atr && a - atr > c) && (b + atr >= d  &&  b - atr <= d))
       return "Descending Triangle";
    return "nothing";
   }
@@ -378,4 +500,3 @@ Pattern :: Pattern()
 Pattern::~Pattern(void)
   {}
 //===================================================================================================================================
- 
