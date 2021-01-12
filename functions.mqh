@@ -48,3 +48,42 @@ bool isNewBar(ENUM_TIMEFRAMES tf)
    return(false);
   }
 //+------------------------------------------------------------------+
+
+
+bool BreakOut(double priceLevel, bool isLong, int index,ENUM_TIMEFRAMES timeframe) // it returns the pricelevel Breakout
+  {
+   
+   double closeBar1         = iClose(_Symbol,timeframe,index);
+   double openBar1          = iOpen(_Symbol,timeframe,index);
+   double closeBar2         = iClose(_Symbol,timeframe,index+1);
+   double body              = MathAbs(closeBar1 - openBar1) / 2;
+   if(isLong)
+     {
+      double state   = (closeBar1 > openBar1) ? (body + openBar1) : (0);
+
+      if(state  > priceLevel && state != 0)
+        {
+         return true;
+        }
+      if(closeBar2 < priceLevel)
+         return false;
+      if(closeBar1 < priceLevel)
+         return false;
+      return true;
+     }
+   if(!isLong)
+     {
+      double state   = (closeBar1 < openBar1) ? (openBar1 - body) : (0);
+
+      if(state  < priceLevel && state != 0)
+        {
+         return true;
+        }
+      if(closeBar2 > priceLevel)
+         return false;
+      if(closeBar1 > priceLevel)
+         return false;
+      return true;
+     }
+   return false;
+  }
