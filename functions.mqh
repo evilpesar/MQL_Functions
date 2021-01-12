@@ -50,9 +50,12 @@ bool isNewBar(ENUM_TIMEFRAMES tf)
 //+------------------------------------------------------------------+
 
 
+//+------------------------------------------------------------------+
+//| if price breakout priceleve, isLong is for uptrend    |
+//+------------------------------------------------------------------+
 bool BreakOut(double priceLevel, bool isLong, int index,ENUM_TIMEFRAMES timeframe) // it returns the pricelevel Breakout
   {
-   
+
    double closeBar1         = iClose(_Symbol,timeframe,index);
    double openBar1          = iOpen(_Symbol,timeframe,index);
    double closeBar2         = iClose(_Symbol,timeframe,index+1);
@@ -87,3 +90,4 @@ bool BreakOut(double priceLevel, bool isLong, int index,ENUM_TIMEFRAMES timefram
      }
    return false;
   }
+//+------------------------------------------------------------------+
